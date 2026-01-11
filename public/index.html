@@ -37,7 +37,7 @@
     </div>
 </div>
 
-<!-- Firebase v10+ Modular SDK + More Visitor Data -->
+<!-- Firebase v10+ Modular SDK – Fixed version -->
 <script type="module">
     // Firebase imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -55,6 +55,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // Fixed & safe version – no undefined values
     window.next = async function() {
         const name = document.getElementById("username").value.trim();
 
@@ -63,56 +64,45 @@
             return;
         }
 
-        // ── Collect much more device/browser information ───────────────
-        const extraData = {
-            // Basic info (you already had most)
+        const visitorData = {
             name: name,
             timestamp: new Date().toISOString(),
-            localTime: new Date().toLocaleString(),
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            language: navigator.language,
-            languages: navigator.languages ? navigator.languages.join(", ") : null,
+            localTime: new Date().toLocaleString('en-IN', { timeZoneName: 'short' }),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown",
 
-            // Screen & Display
-            screen: {
-                width: screen.width,
-                height: screen.height,
-                availWidth: screen.availWidth,
-                availHeight: screen.availHeight,
-                colorDepth: screen.colorDepth,
-                pixelDepth: screen.pixelDepth,
-                orientation: screen.orientation?.type || "unknown",
-                pixelRatio: window.devicePixelRatio
-            },
+            // Browser basics
+            userAgent: navigator.userAgent?.substring(0, 180) || "Unknown",
+            platform: navigator.platform || "Unknown",
+            language: navigator.language || "Unknown",
+            languages: Array.isArray(navigator.languages) 
+                ? navigator.languages.join(", ") 
+                : (navigator.language || "Unknown"),
 
-            // Hardware & Performance hints
-            hardwareConcurrency: navigator.hardwareConcurrency || "unknown",
-            deviceMemory: navigator.deviceMemory || "unknown",          // GB (Chrome/Edge)
-            maxTouchPoints: navigator.maxTouchPoints || 0,
+            // Screen information (very useful)
+            screenResolution: `${screen.width}×${screen.height}`,
+            availResolution: `${screen.availWidth}×${screen.availHeight}`,
+            colorDepth: screen.colorDepth || "Unknown",
+            pixelRatio: window.devicePixelRatio || 1,
 
-            // Connection (may be limited in some browsers)
-            connection: navigator.connection ? {
-                effectiveType: navigator.connection.effectiveType,
-                downlink: navigator.connection.downlink,
-                rtt: navigator.connection.rtt,
-                saveData: navigator.connection.saveData
-            } : "not available",
+            // Hardware
+            hardwareCores: navigator.hardwareConcurrency || "?",
+            deviceMemoryGB: navigator.deviceMemory || "?",
+            maxTouchPoints: navigator.maxTouchPoints ?? 0,
 
-            // Other useful context
+            // Network (mobile-friendly)
+            connectionType: navigator.connection?.effectiveType || "unknown",
+            downlinkMbps: navigator.connection?.downlink ?? "?",
+            rtt: navigator.connection?.rtt ?? "?",
+
+            // Context
             referrer: document.referrer || null,
-            cookiesEnabled: navigator.cookieEnabled,
-            doNotTrack: navigator.doNotTrack,
             pageUrl: window.location.href
         };
 
         try {
-            await addDoc(collection(db, "site_entries"), extraData);
-
+            await addDoc(collection(db, "site_entries"), visitorData);
             // Success → redirect
-            window.location.href = "portfolio.html";
-
+            window.location.href = "portfolio.html";  // ← change to "portfolio.html" if needed
         } catch (error) {
             console.error("Firebase error:", error);
             alert("Something went wrong. Check console (F12) → " + error.message);
